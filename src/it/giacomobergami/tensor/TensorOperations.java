@@ -23,6 +23,7 @@ package it.giacomobergami.tensor;
 import it.giacomobergami.database.Database;
 import it.giacomobergami.relational.Dovetailing;
 import java.math.BigInteger;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -33,7 +34,7 @@ import java.util.Set;
  */
 public class TensorOperations {
     
-    public static <T extends ITensorLayer> Tensor<T> Update(Database updatedOne, Tensor<T> tensor) {
+    public static <T extends ITensorLayer> Tensor<T> TUpdate(Database updatedOne, Tensor<T> tensor) {
         Tensor<T> toret = new Tensor<>(tensor.getLayersClass());
         Set<BigInteger> allKeys = updatedOne.getAllKeys();
         for (BigInteger x: allKeys) {
@@ -57,6 +58,30 @@ public class TensorOperations {
             }
         }
         return toret;
+    }
+    
+    public static <T extends ITensorLayer> Tensor<T> TJoin(Database ndb, Collection<String> commonLayers, Tensor<T> tLeft, Tensor<T> tRight) {
+         Tensor<T> nt = new Tensor<>(tLeft.getLayersClass());
+        Set<BigInteger> allKeys = ndb.getAllKeys();
+            for (String x : commonLayers) {
+            T xtLeft = tLeft.get(x);
+            T xtRight = tRight.get(x);
+            for (BigInteger idx : allKeys) {
+                BigInteger dtx[] = Dovetailing.dtInv(idx);
+                for (BigInteger idy : allKeys) {
+                    BigInteger dty[] = Dovetailing.dtInv(idy);
+                    double avg = 0;
+                    for (int i = 0; i < 2; i++) {
+                        for (int j = 0; j < 2; j++) {
+                            avg = avg + xtLeft.get(dtx[i], dty[j]) + xtRight.get(dtx[i], dty[j]);
+                        }
+                    }
+                    avg = avg / 8.0;
+                    nt.set(idx, idy, x, avg);
+                }
+            }
+        }
+            return nt;
     }
     
 }

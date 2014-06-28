@@ -27,6 +27,8 @@ import it.giacomobergami.relational.IJoinProperty;
 import it.giacomobergami.relational.IMapFunction;
 import it.giacomobergami.relational.Table;
 import it.giacomobergami.relational.TableOperations;
+import it.giacomobergami.tensor.ITensorLayer;
+import it.giacomobergami.tensor.Tensor;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collection;
@@ -142,6 +144,17 @@ public class DatabaseOperations {
         }
         return toret;
         
+    }
+    
+    public static <T extends ITensorLayer> Database LeftTiedJoin(Database left,IJoinProperty prop, Database right, Tensor<T> tleft, Tensor<T> tright) {
+        Database toret = new Database();
+        for (String x: left.keySet()) {
+            for (String y:right.keySet()) {
+                Table result = TableOperations.leftTiedJoin(left.get(x), prop, right.get(y),tleft,tright);
+                toret.put(result.getName(),result);
+            }
+        }
+        return toret;
     }
     
 }

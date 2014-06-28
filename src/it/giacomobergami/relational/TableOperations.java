@@ -23,6 +23,8 @@ package it.giacomobergami.relational;
 import it.giacomobergami.functional.IProperty;
 import it.giacomobergami.functional.Tuple;
 import it.giacomobergami.functional.Void;
+import it.giacomobergami.tensor.ITensorLayer;
+import it.giacomobergami.tensor.Tensor;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collection;
@@ -160,6 +162,36 @@ public class TableOperations {
                     for (int i=0;i<right.getSchema().length; i++)
                         toadd[left.getSchema().length+i] = rt.get(i);
                     toret.addRow(lt.getWeight()*rt.getWeight(), Dovetailing.dt(lt.getIndex(), rt.getIndex()), null, toadd);
+                }
+            }
+        }
+        return toret;
+    }
+    
+    public static <T extends ITensorLayer> Table leftTiedJoin(Table left, IJoinProperty prop, Table right, Tensor<T> tleft, Tensor<T> tright) {
+        LinkedList<Class> ll = new LinkedList<>();
+        ll.addAll(Arrays.asList(left.getSchema()));
+        ll.addAll(Arrays.asList(right.getSchema()));
+        Table toret = new Table(left.getName()+"|><|"+right.getName(), ll.toArray(new Class[0]));
+        for (Tuple lt : left) {
+            for (Tuple rt : right) {
+                if (prop.property(lt, rt)) {
+                    Object toadd[] = new Object[ll.size()];
+                    for (int i=0;i<left.getSchema().length; i++)
+                        toadd[i] = lt.get(i);
+                    for (int i=0;i<right.getSchema().length; i++)
+                        toadd[left.getSchema().length+i] = rt.get(i);
+                    
+                    LinkedList<String> commonLayers = new LinkedList<>(tleft.keySet());
+                    commonLayers.retainAll(tright.keySet());
+                    if (commonLayers.size()==0)
+                        continue;
+                    double avg = 0;
+                    for (String k : commonLayers)
+                        avg = tright.get(k).get(lt.getIndex(),rt.getIndex()) + tleft.get(k).get(lt.getIndex(),rt.getIndex()) + avg;
+                    avg = avg / (commonLayers.size()*2.0);
+                    
+                    toret.addRow(lt.getWeight()*avg, Dovetailing.dt(lt.getIndex(), rt.getIndex()), null, toadd);
                 }
             }
         }

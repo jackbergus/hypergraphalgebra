@@ -69,31 +69,24 @@ public class HypergraphOperations<T extends ITensorLayer> {
 
         Tensor<T> tLeft = left.getT();
         Tensor<T> tRight = right.getT();
-        Tensor<T> nt = new Tensor<>(left.getTClass());
 
         Set<String> commonLayers = new HashSet<>(tLeft.keySet());
         commonLayers.addAll(tRight.keySet());
 
-        Set<BigInteger> allKeys = ndb.getAllKeys();
+        Tensor<T> nt = TensorOperations.TJoin(ndb, commonLayers, tLeft, tRight);
+        return new DHImp<>(ndb, nt);
+    }
+    
+    public DHImp<T> HLeftTiedJoin (DHImp<T> left, IJoinProperty prop, DHImp<T> right) {
+        Tensor<T> tLeft = left.getT();
+        Tensor<T> tRight = right.getT();
+        Database ndb = DatabaseOperations.LeftTiedJoin(left.getDB(), prop, right.getDB(), tLeft, tRight);
 
-        for (String x : commonLayers) {
-            T xtLeft = tLeft.get(x);
-            T xtRight = tRight.get(x);
-            for (BigInteger idx : allKeys) {
-                BigInteger dtx[] = Dovetailing.dtInv(idx);
-                for (BigInteger idy : allKeys) {
-                    BigInteger dty[] = Dovetailing.dtInv(idy);
-                    double avg = 0;
-                    for (int i = 0; i < 2; i++) {
-                        for (int j = 0; j < 2; j++) {
-                            avg = avg + xtLeft.get(dtx[i], dty[j]) + xtRight.get(dtx[i], dty[j]);
-                        }
-                    }
-                    avg = avg / 8.0;
-                    nt.set(idx, idy, x, avg);
-                }
-            }
-        }
+
+        Set<String> commonLayers = new HashSet<>(tLeft.keySet());
+        commonLayers.addAll(tRight.keySet());
+
+        Tensor<T> nt = TensorOperations.TJoin(ndb, commonLayers, tLeft, tRight);
         return new DHImp<>(ndb, nt);
     }
 
@@ -146,13 +139,13 @@ public class HypergraphOperations<T extends ITensorLayer> {
     
     public DHImp<T> HProject(DHImp<T> rdb, Class... es) {
         Database ndb = DatabaseOperations.Project(rdb.getDB(), es);
-        Tensor<T> nt = TensorOperations.Update(ndb, rdb.getT());
+        Tensor<T> nt = TensorOperations.TUpdate(ndb, rdb.getT());
         return new DHImp<>(ndb,nt);
     }
     
     public DHImp<T> HGroupBy(DHImp<T> rdb, Class<T> clazz, IMapFunction<T> iMapFunction, Class... braket) {
         Database ndb = DatabaseOperations.ProjectAndGroupBy(rdb.getDB(), clazz, iMapFunction, braket);
-        Tensor<T> nt = TensorOperations.Update(ndb, rdb.getT());
+        Tensor<T> nt = TensorOperations.TUpdate(ndb, rdb.getT());
         return new DHImp<>(ndb,nt);
     }
 

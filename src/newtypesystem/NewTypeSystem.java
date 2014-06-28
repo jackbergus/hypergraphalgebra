@@ -23,25 +23,16 @@
 package newtypesystem;
 
 import it.giacomobergami.database.Database;
-import it.giacomobergami.database.DatabaseOperations;
 import it.giacomobergami.dhimp.DHImp;
 import it.giacomobergami.dhimp.HypergraphOperations;
-import it.giacomobergami.functional.IProperty;
 import it.giacomobergami.relational.Dovetailing;
 import it.giacomobergami.relational.Table;
-import it.giacomobergami.relational.TableOperations;
 import it.giacomobergami.functional.Tuple;
 import it.giacomobergami.relational.IJoinProperty;
-import it.giacomobergami.relational.IMapFunction;
 import it.giacomobergami.tensor.BinaryRelationsTensor;
 import it.giacomobergami.tensor.GuavaBinaryTensorLayer;
-import it.giacomobergami.tensor.HyperEdge;
-import it.giacomobergami.tensor.IHedgeProp;
-import it.giacomobergami.tensor.Tensor;
 import java.math.BigInteger;
-import java.util.Collection;
 import java.util.LinkedList;
-import java.util.List;
 
 /**
  *
@@ -109,7 +100,11 @@ public class NewTypeSystem {
         DHImp<GuavaBinaryTensorLayer> dh1 = new DHImp<>(db1,tensor1);
         DHImp<GuavaBinaryTensorLayer> dh2 = new DHImp<>(db2,tensor2);
         HypergraphOperations<GuavaBinaryTensorLayer> go = new HypergraphOperations<>();
-        /*DHImp<GuavaBinaryTensorLayer> result = go.HSelect(dh, new IProperty() {
+        
+        DHImp<GuavaBinaryTensorLayer> result;
+        //result = go.HProject(dh1, String.class);
+        
+        /*result = go.HSelect(dh, new IProperty() {
             @Override
             public boolean prop(Tuple tup) {
                 return tup.get(0).equals("A");
@@ -120,21 +115,27 @@ public class NewTypeSystem {
                 return true;
             }
         });*/
-        /*DHImp<GuavaBinaryTensorLayer> result = go.HJoin(dh1, new IJoinProperty() {
+        /* result = go.HJoin(dh1, new IJoinProperty() {
             @Override
             public boolean property(Tuple left, Tuple right) {
                 return (left.get(0).equals(right.get(0)));
             }
         }, dh2);*/
-        LinkedList<DHImp<GuavaBinaryTensorLayer>> l = new LinkedList<>();
+       /* LinkedList<DHImp<GuavaBinaryTensorLayer>> l = new LinkedList<>();
         l.add(dh1);
         l.add(dh2);
-        DHImp<GuavaBinaryTensorLayer> result =  go.HUnion(l);
+        result =  go.HUnion(l);*/
+        result = go.HLeftTiedJoin(dh1, new IJoinProperty() {
+            @Override
+            public boolean property(Tuple left, Tuple right) {
+                return (left.get(0).equals(right.get(0)));
+            }
+        }, dh2);
         
         for (com.google.common.collect.Table.Cell<BigInteger, BigInteger, Double> cell:result.getT().get("A").getValueRange()) {
             System.out.println(cell);
         }
-        for (Tuple x:result.getDB().get("t1")) {
+        for (Tuple x:result.getDB().get("t1|><|t1")) {
             System.out.println(x);
         }
         
