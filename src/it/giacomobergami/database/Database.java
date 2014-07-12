@@ -22,6 +22,7 @@ package it.giacomobergami.database;
 
 import it.giacomobergami.functional.Tuple;
 import it.giacomobergami.relational.Table;
+import it.giacomobergami.types.Type;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collection;
@@ -35,7 +36,7 @@ import java.util.Set;
  *
  * @author gyankos
  */
-public class Database implements Map<String,Table> {
+public class Database  {
 
     private Map<String,Table> db;
     
@@ -43,32 +44,31 @@ public class Database implements Map<String,Table> {
         db = new HashMap<>();
     }
     
+    public Set<String> getTableNames() {
+        return db.keySet();
+    }
+    
     public Database(Map<String,Table> database) {
         db = database;
     }
     
-    @Override
     public int size() {
         return db.size();
     }
 
-    @Override
     public boolean isEmpty() {
         return db.isEmpty();
     }
 
-    @Override
-    public boolean containsKey(Object key) {
+    public boolean containsTableWithName(String key) {
         return db.containsKey(key);
     }
 
-    @Override
-    public boolean containsValue(Object value) {
+    public boolean containsTable(Table value) {
         return db.containsValue(value);
     }
 
-    @Override
-    public Table get(Object key) {
+    public Table getTable(String key) {
         return db.get(key);
     }
     
@@ -81,7 +81,7 @@ public class Database implements Map<String,Table> {
         return null;
     }
     
-    public Set<BigInteger> getAllKeys() {
+    public Set<BigInteger> getAllRowsKeys() {
         Set<BigInteger> toret = new HashSet<>();
         for (String key : db.keySet()) {
             toret.addAll(db.get(key).getAllKeys());
@@ -89,8 +89,7 @@ public class Database implements Map<String,Table> {
         return toret;
     }
 
-    @Override
-    public Table put(String key, Table value) {
+    public Table update(String key, Table value) {
         if (value.getName().equals(key)) {
             if (db.containsKey(key)) {
                 if (!Arrays.equals(db.get(key).getSchema(),value.getSchema()))
@@ -102,37 +101,32 @@ public class Database implements Map<String,Table> {
     }
     
     public Table add(Table value) {
-        return put(value.getName(),value);
+        return update(value.getName(),value);
+    }
+    
+    public Table createTable(String name, BigInteger startIndex, Type ... clazzes) {
+        add(new Table(name, startIndex, clazzes));
+        return getTable(name);
+    }
+    
+    public Table createTable(String name,  Type ... clazzes) {
+        add(new Table(name, clazzes));
+        return getTable(name);
     }
 
-    @Override
-    public Table remove(Object key) {
+    public Table remove(String key) {
         return db.remove(key);
     }
 
-    @Override
     public void putAll(Map<? extends String, ? extends Table> m) {
         db.putAll(m);
     }
 
-    @Override
+
     public void clear() {
         db.clear();
     }
 
-    @Override
-    public Set<String> keySet() {
-        return db.keySet();
-    }
 
-    @Override
-    public Collection<Table> values() {
-        return db.values();
-    }
-
-    @Override
-    public Set<Entry<String, Table>> entrySet() {
-        return db.entrySet();
-    }
     
 }

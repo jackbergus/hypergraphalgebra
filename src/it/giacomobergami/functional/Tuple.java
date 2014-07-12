@@ -20,9 +20,12 @@
 
 package it.giacomobergami.functional;
 
+import it.giacomobergami.types.PojoGenerator;
+import it.giacomobergami.types.Type;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -34,11 +37,19 @@ public class Tuple {
     private Class classes[];
     private Object elems[];
     double w;
+    boolean isPojo;
     BigInteger index;
+    
+    public Tuple(boolean isPojo, Class... clazzes) {
+        classes = clazzes;
+        elems = new Object[clazzes.length];
+        this.isPojo = isPojo;
+    }
     
     public Tuple(Class... clazzes) {
         classes = clazzes;
         elems = new Object[clazzes.length];
+        this.isPojo = true;
     }
     
     public double getWeight() {return w;}
@@ -55,8 +66,8 @@ public class Tuple {
         }
         w = weight;
         this.index = index;
+        this.isPojo = false;
     }
-    
     
     public int size() {
         return elems.length;
@@ -100,17 +111,22 @@ public class Tuple {
         return elems[index];
     }
     
+    public Object get(Class<?> type) {
+        for (int i=0; i<classes.length; i++)
+            if (classes[i].equals(type))
+                return elems[i];
+        return null;
+    }
+    
+    public Object get(Type t) {
+        return get(PojoGenerator.getPojoClass(t));
+    }
+    
     public Object[] get() {
         return elems;
     }
     
-    public boolean set(int index, Object val) {
-        if (val.getClass().equals(classes[index])) {
-            elems[index] = val;
-            return true;
-        }
-        return false;
-    }
+
     
     public boolean set(Object ... elem) {
         if (elem.length!=classes.length)
@@ -120,7 +136,7 @@ public class Tuple {
                 return false;
         }
         for (int i=0; i<elem.length; i++) {
-            set(i,elem[i]);
+            elems[i] = elem[i];
         }
         return true;
     }
@@ -129,7 +145,10 @@ public class Tuple {
     public String toString() {
         String toret = "<";
         for (Object x: elems) {
-            toret += x.toString()+",";
+            if (!isPojo)
+                toret += x.toString()+",";
+            else
+                toret += PojoGenerator.getPojoValue(x).toString() +",";
         }
         toret = toret.substring(0, toret.length()-1);
         return toret +"> w="+w+" ~ idx="+index.toString();

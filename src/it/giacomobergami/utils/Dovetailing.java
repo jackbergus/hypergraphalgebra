@@ -18,7 +18,7 @@
  * along with HypergraphAlgebra. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package it.giacomobergami.relational;
+package it.giacomobergami.utils;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

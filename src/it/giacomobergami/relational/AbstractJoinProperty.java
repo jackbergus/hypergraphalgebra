@@ -20,14 +20,34 @@
 
 package it.giacomobergami.relational;
 
+import it.giacomobergami.dhimp.DHImp;
 import it.giacomobergami.functional.Tuple;
+import it.giacomobergami.tensor.ITensorLayer;
 
 /**
  *
  * @author gyankos
  */
-public interface IJoinProperty {
+public abstract class AbstractJoinProperty<T extends ITensorLayer> {
     
-    public boolean property(Tuple left, Tuple right);
+    private DHImp<T> left, right;
+    public AbstractJoinProperty(DHImp<T> dhleft, DHImp<T> dhright) {
+        this.left = dhleft;
+        this.right = dhright;
+    }
+    
+    /**
+     *
+     * @param left    left tuple of dhleft to join
+     * @param right   right tuple of dhright to join
+     * @param dhleft
+     * @param dhright
+     * @return
+     */
+    public abstract boolean property(Tuple left, Tuple right, DHImp<T> dhleft, DHImp<T> dhright);
+    
+    public boolean property(Tuple left, Tuple right) {
+        return property(left, right, this.left, this.right);
+    }
     
 }

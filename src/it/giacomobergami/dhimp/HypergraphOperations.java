@@ -24,18 +24,21 @@ import it.giacomobergami.database.Database;
 import it.giacomobergami.database.DatabaseOperations;
 import it.giacomobergami.functional.IProperty;
 import it.giacomobergami.functional.Tuple;
-import it.giacomobergami.relational.Dovetailing;
+import it.giacomobergami.utils.Dovetailing;
 import it.giacomobergami.relational.ICalc;
-import it.giacomobergami.relational.IJoinProperty;
+import it.giacomobergami.relational.AbstractJoinProperty;
 import it.giacomobergami.relational.IMapFunction;
+import it.giacomobergami.relational.TableOperations;
 import it.giacomobergami.tensor.HyperEdge;
 import it.giacomobergami.tensor.IHedgeProp;
 import it.giacomobergami.tensor.ITensorLayer;
 import it.giacomobergami.tensor.Tensor;
 import it.giacomobergami.tensor.TensorOperations;
+import it.giacomobergami.types.Type;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -64,7 +67,7 @@ public class HypergraphOperations<T extends ITensorLayer> {
         return new DHImp<>(ndb, nt);
     }
 
-    public DHImp<T> HJoin(DHImp<T> left, IJoinProperty prop, DHImp<T> right) {
+    public DHImp<T> HJoin(DHImp<T> left, AbstractJoinProperty prop, DHImp<T> right) {
         Database ndb = DatabaseOperations.Join(left.getDB(), prop, right.getDB());
 
         Tensor<T> tLeft = left.getT();
@@ -77,7 +80,7 @@ public class HypergraphOperations<T extends ITensorLayer> {
         return new DHImp<>(ndb, nt);
     }
     
-    public DHImp<T> HLeftTiedJoin (DHImp<T> left, IJoinProperty prop, DHImp<T> right) {
+    public DHImp<T> HLeftTiedJoin (DHImp<T> left, AbstractJoinProperty prop, DHImp<T> right) {
         Tensor<T> tLeft = left.getT();
         Tensor<T> tRight = right.getT();
         Database ndb = DatabaseOperations.LeftTiedJoin(left.getDB(), prop, right.getDB(), tLeft, tRight);
@@ -90,7 +93,7 @@ public class HypergraphOperations<T extends ITensorLayer> {
         return new DHImp<>(ndb, nt);
     }
 
-    public <K> DHImp<T> HCalc(DHImp<T> rdb, Class<K> claxx, ICalc<K> ic) {
+    public  DHImp<T> HCalc(DHImp<T> rdb, Type claxx, ICalc ic) {
         return new DHImp<>(DatabaseOperations.Calc(rdb.getDB(), claxx, ic), rdb.getT());
     }
 
@@ -112,7 +115,7 @@ public class HypergraphOperations<T extends ITensorLayer> {
         }
         Database ndb = DatabaseOperations.Union(sdb);
 
-        Set<BigInteger> allKeys = ndb.getAllKeys();
+        Set<BigInteger> allKeys = ndb.getAllRowsKeys();
 
         for (String layer : commonLayers) {
             for (BigInteger idx : allKeys) {
@@ -137,16 +140,43 @@ public class HypergraphOperations<T extends ITensorLayer> {
 
     }
     
-    public DHImp<T> HProject(DHImp<T> rdb, Class... es) {
+    public DHImp<T> HProject(DHImp<T> rdb, Type... es) {
         Database ndb = DatabaseOperations.Project(rdb.getDB(), es);
         Tensor<T> nt = TensorOperations.TUpdate(ndb, rdb.getT());
         return new DHImp<>(ndb,nt);
     }
     
-    public DHImp<T> HGroupBy(DHImp<T> rdb, Class<T> clazz, IMapFunction<T> iMapFunction, Class... braket) {
+    public DHImp<T> HGroupBy(DHImp<T> rdb, Type clazz, IMapFunction iMapFunction, Type... braket) {
         Database ndb = DatabaseOperations.ProjectAndGroupBy(rdb.getDB(), clazz, iMapFunction, braket);
         Tensor<T> nt = TensorOperations.TUpdate(ndb, rdb.getT());
         return new DHImp<>(ndb,nt);
+    }
+    
+    public DHImp<T> HRename(DHImp<T> db, Type source, Type dest) {
+        Database ndb = DatabaseOperations.Reindex(DatabaseOperations.Rename(db.getDB(), source, dest), TableOperations.invdtvecPhi);
+        return new DHImp<>(ndb,db.getT());
+    }
+    
+    public DHImp<T> HRename(DHImp<T> db, Collection<Type> source, Collection<Type> dest) {
+        int len = Math.min(source.size(), dest.size());
+        int count = 1;
+        DHImp<T> val = db;
+        Iterator<Type> si = source.iterator();
+        Iterator<Type> di = dest.iterator();
+        while (count<=len) {
+            val = HRename(val, si.next(), di.next());
+            count++;
+        }
+        return val;
+    }
+    
+    public DHImp<T> HRename(DHImp<T> db, Type[] source, Type[] dest) {
+        int len = Math.min(source.length, dest.length);
+        DHImp<T> val = db;
+        for (int i=0;i<len; i++) {
+            val = HRename(val, source[i], dest[i]);
+        }
+        return val;
     }
 
 }

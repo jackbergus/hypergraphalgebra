@@ -20,11 +20,14 @@
 
 package it.giacomobergami.relational;
 
+import it.giacomobergami.utils.Dovetailing;
+import it.giacomobergami.database.IPhi;
 import it.giacomobergami.functional.IProperty;
 import it.giacomobergami.functional.Tuple;
-import it.giacomobergami.functional.Void;
 import it.giacomobergami.tensor.ITensorLayer;
 import it.giacomobergami.tensor.Tensor;
+import it.giacomobergami.types.PojoGenerator;
+import it.giacomobergami.types.Type;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,7 +35,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 
 /**
@@ -40,6 +42,30 @@ import java.util.Map;
  * @author gyankos
  */
 public class TableOperations {
+    
+    public static final IPhi dtvecPhi = new IPhi() {
+        @Override
+        public BigInteger reindex(BigInteger index) {
+            LinkedList<BigInteger> llbi = new LinkedList<>();
+            llbi.add(index);
+            return Dovetailing.dtVec(llbi);
+        }
+    };
+    
+    
+    public static final IPhi invdtvecPhi = new IPhi() {
+        @Override
+        public BigInteger reindex(BigInteger index) {
+            return Dovetailing.dtVecInv(index).get(0);
+        }
+    };
+        
+    public static Table reindexing(Table t, IPhi reindex) {
+        for (BigInteger i : t.getAllKeys()) {
+            t.get(i).setIndex(reindex.reindex(t.get(i).getIndex()));
+        }
+        return t;
+    }
     
     private static Tuple projectTuple(Tuple t, Class... L) {
         Object o[] = new Object[L.length];
@@ -55,45 +81,49 @@ public class TableOperations {
         return toret;
     }
     
-    public static Table project(Table t,Class... L) {
+    public static Table project(Table t,Type... L) {
+        Table tmp = new Table("tmp", L);
         Table toret = new Table(t.getName()+" over L", L);
-        Map<Integer,List<Double>> wmap = new HashMap<>();
-        Map<Integer,List<BigInteger>> imap = new HashMap<>();
+        Map<BigInteger,List<Double>> wmap = new HashMap<>();
+        Map<BigInteger,List<BigInteger>> imap = new HashMap<>();
+        Class vec[] = new Class[L.length];
+        for (int j=0; j<L.length; j++)
+            vec[j] = L[j].getPojoClass();
         
-        int i = 0;
+        BigInteger i = BigInteger.ZERO;
 
         for (Tuple y : t) {
-            Tuple x = projectTuple(y, L);
-            int pos = toret.containsValuesPos(x);
-            if (pos==-1) {
-                toret.addRow(1,x.get().clone());
+            Tuple x = projectTuple(y, vec);
+            BigInteger pos = tmp.containsValuesPos(x);
+            if (pos.equals(Table.ERROR)) {
+                tmp.addRow(1,x.get().clone());
                 LinkedList<Double> weight = new LinkedList<>();
                 weight.add(x.getWeight());
                 wmap.put(i,weight);
                 LinkedList<BigInteger> index = new LinkedList<>();
                 index.add(x.getIndex());
                 imap.put(i,index);
-                i++;
+                i = i.add(BigInteger.ONE);
             } else {
                 wmap.get(pos).add(x.getWeight());
                 imap.get(pos).add(x.getIndex());
             }
         }
         
-        for (int j=0; j<toret.size(); j++) {
+        for (BigInteger j : tmp.getAllKeys()) {
             double size = wmap.get(j).size();
             double avg = 0;
             for (double d : wmap.get(j))
                 avg += d;
             avg = avg / size;
-            toret.get(j).setWeight(avg);
+            tmp.get(j).setWeight(avg);
             //System.out.println("~~~~~");
             /*for (BigInteger x: imap.get(j)) {
                 System.out.println(x);
             }*/
             //System.out.println("~~~~~");
-            toret.get(j).setIndex( Dovetailing.dtVec(imap.get(j)));
-            toret.add(toret.remove(j));
+            tmp.get(j).setIndex( Dovetailing.dtVec(imap.get(j)));
+            toret.add(tmp.get(j));
         }
         
         return toret;
@@ -115,7 +145,7 @@ public class TableOperations {
             return null;
         if (lt.isEmpty())
             return new Table("empty table on union"); //with no size
-        Class cls[] = null;
+        Type cls[] = null;
         String name = "";
         for (Table t : lt) {
             if (cls==null)
@@ -134,25 +164,28 @@ public class TableOperations {
         return project(toret,cls);
     }
     
-    public static <T> Table calc(Table t, Class<T> clazz, ICalc<T> op) {
-        Class clazzes[] = new Class[t.size()+1];
-        System.arraycopy(t.getSchema(),0,clazzes,0,t.getSchema().length);
-        clazzes[t.size()] = clazz;
-        Table toret = new Table(t.getName()+" Calc with "+clazz.getCanonicalName(),clazzes);
+    public static <T> Table calc(Table t, Type clazz, ICalc op) {
+        int len = t.getSchema().length;
+        Type clazzes[] = new Type[len+1];
+        System.arraycopy(t.getSchema(),0,clazzes,0,len);
+        clazzes[len] = clazz;
+        Table toret = new Table(t.getName()+" Calc with "+clazz.getName(),clazzes);
         for (Tuple tup : t) {
-            Object objs[] = new Object[t.size()+1];
-            System.arraycopy(tup, 0, objs, 0, t.size());
-            objs[t.size()] = op.calcResult(tup);
+            Object objs[] = new Object[len+1];
+            System.arraycopy(tup.get(), 0, objs, 0, len);
+            objs[len] = op.calcResult(tup);
             toret.addRow(tup.getWeight(), tup.getIndex(), null, objs);
         }
         return toret;
     }
     
-    public static Table join(Table left, IJoinProperty prop, Table right) {
-        LinkedList<Class> ll = new LinkedList<>();
+
+    
+    public static <T  extends ITensorLayer> Table join(Table left, AbstractJoinProperty<T> prop, Table right) {
+        LinkedList<Type> ll = new LinkedList<>();
         ll.addAll(Arrays.asList(left.getSchema()));
         ll.addAll(Arrays.asList(right.getSchema()));
-        Table toret = new Table(left.getName()+"|><|"+right.getName(), ll.toArray(new Class[0]));
+        Table toret = new Table(left.getName()+"|><|"+right.getName(), ll.toArray(new Type[0]));
         for (Tuple lt : left) {
             for (Tuple rt : right) {
                 if (prop.property(lt, rt)) {
@@ -168,11 +201,11 @@ public class TableOperations {
         return toret;
     }
     
-    public static <T extends ITensorLayer> Table leftTiedJoin(Table left, IJoinProperty prop, Table right, Tensor<T> tleft, Tensor<T> tright) {
-        LinkedList<Class> ll = new LinkedList<>();
+    public static <T extends ITensorLayer> Table leftTiedJoin(Table left, AbstractJoinProperty prop, Table right, Tensor<T> tleft, Tensor<T> tright) {
+        LinkedList<Type> ll = new LinkedList<>();
         ll.addAll(Arrays.asList(left.getSchema()));
         ll.addAll(Arrays.asList(right.getSchema()));
-        Table toret = new Table(left.getName()+"|><|"+right.getName(), ll.toArray(new Class[0]));
+        Table toret = new Table(left.getName()+"|><|"+right.getName(), ll.toArray(new Type[0]));
         for (Tuple lt : left) {
             for (Tuple rt : right) {
                 if (prop.property(lt, rt)) {
@@ -198,13 +231,13 @@ public class TableOperations {
         return toret;
     }
     
-    private static <T> Table groupBy(Table t, Class<T> clazz, IMapFunction<T> map) {
-        Class[] oldschema = t.getSchema();
+    private static Table groupBy(Table t, Type clazz, IMapFunction map) {
+        Type[] oldschema = t.getSchema();
         Table toret = new Table(t.getName()+" Group by "+clazz.getName(), oldschema);
-        LinkedList<Class> llc = new LinkedList<>();
+        LinkedList<Type> llc = new LinkedList<>();
         int clazzIndex = -1;
         int cidx = 0;
-        for (Class c : oldschema) {
+        for (Type c : oldschema) {
             if (!c.equals(clazz))
                 llc.add(c);
             else
@@ -212,19 +245,19 @@ public class TableOperations {
                     clazzIndex = cidx;
             cidx++;
         }
-        Class clazzes[] = llc.toArray(new Class[0]);
+        Type clazzes[] = llc.toArray(new Type[0]);
         Table tmap = new Table("tmp",clazzes);
         int newschemaleng = tmap.getSchema().length;
-        Map<Integer,List<Double>> wmap = new HashMap<>();
-        Map<Integer,List<BigInteger>> imap = new HashMap<>();
-        Map<Integer,List<T>> vmap = new HashMap<>();
+        Map<BigInteger,List<Double>> wmap = new HashMap<>();
+        Map<BigInteger,List<BigInteger>> imap = new HashMap<>();
+        Map<BigInteger,List<Object>> vmap = new HashMap<>();
         
-        int i = 0;
+        BigInteger i = BigInteger.ZERO;
 
         for (Tuple x : t) {
-            Tuple pt = projectTuple(x, clazzes);
-            int pos = tmap.containsValuesPos(pt);
-            if (pos==-1) {
+            Tuple pt = projectTuple(x, tmap.getSchemaClasses());
+            BigInteger pos = tmap.containsValuesPos(pt);
+            if (pos.equals(Table.ERROR)) {
                 tmap.addRow(1, pt.get().clone());
                 LinkedList<Double> weight = new LinkedList<>();
                 weight.add(x.getWeight());
@@ -232,18 +265,18 @@ public class TableOperations {
                 LinkedList<BigInteger> index = new LinkedList<>();
                 index.add(x.getIndex());
                 imap.put(i,index);
-                LinkedList<T> value = new LinkedList<>();
-                value.add((T)x.get(clazzIndex));
+                LinkedList<Object> value = new LinkedList<>();
+                value.add(x.get(clazzIndex));
                 vmap.put(i, value);
-                i++;
+                i = i.add(BigInteger.ONE);
             } else {
                 wmap.get(pos).add(x.getWeight());
                 imap.get(pos).add(x.getIndex());
-                vmap.get(pos).add((T)x.get(clazzIndex));
+                vmap.get(pos).add(x.get(clazzIndex));
             }
         }
         
-        for (int j=0; j<tmap.size(); j++) {
+        for (BigInteger j : tmap.getAllKeys()) {
             double size = wmap.get(j).size();
             double avg = 0;
             for (double d : wmap.get(j))
@@ -251,7 +284,7 @@ public class TableOperations {
             avg = avg / size;
             
             BigInteger index = Dovetailing.dtVec(imap.get(j));
-            T calculated = map.collectOf(vmap.get(j));
+            Object calculated = map.collectOf(vmap.get(j));
             Object obj[] = new Object[oldschema.length];
             System.arraycopy(tmap.get(j).get(), 0, obj, 0, newschemaleng);
             obj[oldschema.length-1] = calculated;
@@ -261,11 +294,32 @@ public class TableOperations {
         return toret;
     }
 
-    public static <T> Table projectAndGroupBy(Table one, Class<T> aClass, IMapFunction<T> iMapFunction, Class... braket) {
-        Class array[] = new Class[braket.length+1];
+    public static <T> Table projectAndGroupBy(Table one, Type aClass, IMapFunction iMapFunction, Type... braket) {
+        Type array[] = new Type[braket.length+1];
         System.arraycopy(braket, 0, array, 0, braket.length);
         array[braket.length] = aClass;
         return groupBy(project(one,array), aClass, iMapFunction);
+    }
+    
+    /*public static Table projectAndGroupBy(Table one, Type aType, IMapFunction iMapFunction, Type... braket){
+        Class array[] = new Class[braket.length];
+        for (int i=0; i<braket.length; i++) 
+            array[i] = braket[i].getJavaClass();
+        return projectAndGroupBy(one, aType.getJavaClass(), iMapFunction, array);
+    }*/
+    
+    public static Table rename(Table one, final Type source, final Type dest) {
+        ICalc renameop = new ICalc() {
+            @Override
+            public Object calcResult(Tuple t) {
+                return dest.create(PojoGenerator.getPojoValue(t.get(source)));
+            }
+        };
+        Table calced = calc(one, dest, renameop);
+        LinkedList<Type> toproj = new LinkedList<>(Arrays.asList(one.getSchema()));
+        toproj.remove(source);
+        toproj.add(dest);
+        return project(calced, toproj.toArray(new Type[0]));
     }
     
 }

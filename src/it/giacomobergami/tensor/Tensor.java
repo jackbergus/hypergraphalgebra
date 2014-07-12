@@ -21,7 +21,7 @@
 
 package it.giacomobergami.tensor;
 
-import it.giacomobergami.relational.Dovetailing;
+import it.giacomobergami.utils.Dovetailing;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -55,7 +55,7 @@ public class Tensor<T extends ITensorLayer> extends HashMap<String,T>  {
     }
     
     public boolean createNewLayer(String name) {
-        T layer = newLayer();
+        T layer = createNewLayer();
         if (containsKey(name) || (layer==null))
             return false;
         put(name,layer);
@@ -71,25 +71,17 @@ public class Tensor<T extends ITensorLayer> extends HashMap<String,T>  {
         if (containsKey((String)k))
             return super.get(k);
         else
-            return newLayer();
+            return createNewLayer();
     }
     
-    private T newLayer() {
+    private T createNewLayer() {
         try {
             try {
                 return clazck.getConstructor().newInstance();
-            } catch (NoSuchMethodException ex) {
-                Logger.getLogger(Tensor.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (SecurityException ex) {
+            } catch (    NoSuchMethodException | SecurityException ex) {
                 Logger.getLogger(Tensor.class.getName()).log(Level.SEVERE, null, ex);
             }
-        } catch (InstantiationException ex) {
-            Logger.getLogger(Tensor.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            Logger.getLogger(Tensor.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IllegalArgumentException ex) {
-            Logger.getLogger(Tensor.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (InvocationTargetException ex) {
+        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
             Logger.getLogger(Tensor.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;

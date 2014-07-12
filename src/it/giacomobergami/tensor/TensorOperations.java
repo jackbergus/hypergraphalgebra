@@ -21,7 +21,7 @@
 package it.giacomobergami.tensor;
 
 import it.giacomobergami.database.Database;
-import it.giacomobergami.relational.Dovetailing;
+import it.giacomobergami.utils.Dovetailing;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.List;
@@ -36,7 +36,7 @@ public class TensorOperations {
     
     public static <T extends ITensorLayer> Tensor<T> TUpdate(Database updatedOne, Tensor<T> tensor) {
         Tensor<T> toret = new Tensor<>(tensor.getLayersClass());
-        Set<BigInteger> allKeys = updatedOne.getAllKeys();
+        Set<BigInteger> allKeys = updatedOne.getAllRowsKeys();
         for (BigInteger x: allKeys) {
             System.out.println(x);
         }
@@ -62,7 +62,7 @@ public class TensorOperations {
     
     public static <T extends ITensorLayer> Tensor<T> TJoin(Database ndb, Collection<String> commonLayers, Tensor<T> tLeft, Tensor<T> tRight) {
          Tensor<T> nt = new Tensor<>(tLeft.getLayersClass());
-        Set<BigInteger> allKeys = ndb.getAllKeys();
+        Set<BigInteger> allKeys = ndb.getAllRowsKeys();
             for (String x : commonLayers) {
             T xtLeft = tLeft.get(x);
             T xtRight = tRight.get(x);

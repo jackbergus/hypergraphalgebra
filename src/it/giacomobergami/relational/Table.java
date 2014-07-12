@@ -20,8 +20,11 @@
 
 package it.giacomobergami.relational;
 
+import it.giacomobergami.utils.Dovetailing;
+import it.giacomobergami.types.PojoGenerator;
 import it.giacomobergami.functional.Tuple;
 import it.giacomobergami.functional.Void;
+import it.giacomobergami.types.Type;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collection;
@@ -39,31 +42,72 @@ import java.util.Set;
  */
 public class Table implements List<Tuple> {
     
+    private Type types[];
     private Class classes[];
     private String tName;
     private BigInteger countFrom;
     private Map<BigInteger,Tuple> tupz;
     public static BigInteger ERROR = new BigInteger(Integer.toString(-1));
+    //private boolean isPojo;
     
     public Set<BigInteger> getAllKeys() {
         return tupz.keySet();
     }
     
-    public Table(String name, Class ... clazzes) {
+    public Table(String name) {
+        this.types = new Type[0];
+        this.classes = new Class[0];
+        tupz = new HashMap<>();
+        tName = name;
+        countFrom = BigInteger.ZERO;
+        //isPojo = false;
+    }
+    
+    /*public Table(String name, Class ... clazzes) {
         this.classes = clazzes;
         tupz = new HashMap<>();
         tName = name;
         countFrom = BigInteger.ZERO;
+        isPojo = false;
+    }*/
+    
+    public Table(String name, Type  ... clazzes) {
+        this.types = new Type[clazzes.length];
+        this.classes = new Class[clazzes.length];
+        System.arraycopy(clazzes, 0, this.types, 0, clazzes.length);
+        for (int i=0; i<clazzes.length; i++)
+            this.classes[i] = PojoGenerator.getPojoClass(clazzes[i]);
+        tupz = new HashMap<>();
+        tName = name;
+        countFrom = BigInteger.ZERO;
+        //isPojo = true;
     }
     
-    public Table(String name, BigInteger startIndex, Class ... clazzes) {
+    public Table(String name, BigInteger startIndex, Type ... clazzes) {
+        this.types = new Type[clazzes.length];
+        this.classes = new Class[clazzes.length];
+        System.arraycopy(clazzes, 0, this.types, 0, clazzes.length);
+        for (int i=0; i<clazzes.length; i++)
+            this.classes[i] = PojoGenerator.getPojoClass(clazzes[i]);
+        tupz = new HashMap<>();
+        tName = name;
+        countFrom = startIndex;
+        //isPojo = true;
+    }
+    
+    /*public Table(String name, BigInteger startIndex, Class ... clazzes) {
         this.classes = clazzes;
         tupz = new HashMap<>();
         tName = name;
         countFrom = startIndex;
+        isPojo = false;
+    }*/
+    
+    public Type[] getSchema() {
+        return types;
     }
     
-    public Class[] getSchema() {
+    public Class[] getSchemaClasses() {
         return classes;
     }
     
@@ -80,8 +124,19 @@ public class Table implements List<Tuple> {
     }
     
     public Tuple createRow(double weight, BigInteger idx, Object... objs) {
-        Tuple toret = new Tuple(classes);
+        Tuple toret = new Tuple(true,classes);
         toret.set(objs);
+        toret.setWeight(weight);
+        toret.setIndex(idx);
+        return toret;
+    }
+    
+    public Tuple createPojoRow(double weight, BigInteger idx, Object... objs) {
+        Tuple toret = new Tuple(true,classes);
+        Object array[] = new Object[objs.length];
+        for (int i=0; i<objs.length; i++)
+            array[i] = PojoGenerator.getNewPojoInstance(types[i], objs[i]);
+        toret.set(array);
         toret.setWeight(weight);
         toret.setIndex(idx);
         return toret;
@@ -91,14 +146,39 @@ public class Table implements List<Tuple> {
         return add(createRow(weight,idx,objs));
     }
     
+    public boolean addPojoRow(double weight, BigInteger idx, Void v, Object...objs) {
+        return add(createPojoRow(weight,idx,objs));
+    }
+    
     public boolean addRow(double weight, int idx, Void v, Object...objs) {
         return add(createRow(weight,Dovetailing.index(idx),objs));
+    }
+    
+    public boolean addPojoRow(double weight, int idx, Void v, Object...objs) {
+        return add(createPojoRow(weight,Dovetailing.index(idx),objs));
     }
     
     public boolean addRow(double weight, Object...objs) {
         boolean toret = add(createRow(weight,countFrom,objs));
         countFrom = countFrom.add(BigInteger.ONE);
         return toret;
+    }
+    
+    public BigInteger addPojoRow(double weight, BigInteger index, Object...objs) {
+        add(createPojoRow(weight,index,objs));
+        BigInteger toret = index;
+        countFrom = index.add(BigInteger.ONE);
+        return toret;
+    }
+    
+    public BigInteger addPojoRow(double weight, Object...objs) {
+        boolean result = add(createPojoRow(weight,countFrom,objs));
+        BigInteger toret = countFrom;
+        countFrom = countFrom.add(BigInteger.ONE);
+        if (!result)
+            return ERROR;
+        else
+            return toret;
     }
 
     @Override
@@ -120,18 +200,16 @@ public class Table implements List<Tuple> {
         return tupz.containsValue((Tuple)o);
     }
     
-    public int containsValuesPos(Tuple tup) {
-        int pos = 0;
+    public BigInteger containsValuesPos(Tuple tup) {
         for (BigInteger x:tupz.keySet()) {
             if (tup.equalsToTuple(tupz.get(x)))
-                return pos;
-            pos++;
+                return x;
         }
-        return -1;
+        return ERROR;
     }
     
     public boolean containsValues(Tuple tup) {
-        return (containsValuesPos(tup)!=-1);
+        return (!containsValuesPos(tup).equals(ERROR));
     }
     
     public boolean containsKey(BigInteger i) {

@@ -21,14 +21,15 @@
 package it.giacomobergami.database;
 
 import it.giacomobergami.functional.IProperty;
-import it.giacomobergami.relational.Dovetailing;
+import it.giacomobergami.utils.Dovetailing;
 import it.giacomobergami.relational.ICalc;
-import it.giacomobergami.relational.IJoinProperty;
+import it.giacomobergami.relational.AbstractJoinProperty;
 import it.giacomobergami.relational.IMapFunction;
 import it.giacomobergami.relational.Table;
 import it.giacomobergami.relational.TableOperations;
 import it.giacomobergami.tensor.ITensorLayer;
 import it.giacomobergami.tensor.Tensor;
+import it.giacomobergami.types.Type;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collection;
@@ -44,33 +45,26 @@ import java.util.Set;
  * @author gyankos
  */
 public class DatabaseOperations {
-    
-    public static Table reindexing(Table t, IPhi reindex) {
-        for (int i=0; i<t.size(); i++) {
-            t.get(i).setIndex(reindex.reindex(t.get(i).getIndex()));
+
+    public static Database Reindex(Database d, IPhi reindex) {
+        Database toret = new Database();
+        for (String x:d.getTableNames()) {
+            toret.add(TableOperations.reindexing(d.getTable(x), reindex));
         }
-        return t;
+        return toret;
     }
-    
-    public static final IPhi dtvecPhi = new IPhi() {
-        @Override
-        public BigInteger reindex(BigInteger index) {
-            LinkedList<BigInteger> llbi = new LinkedList<>();
-            llbi.add(index);
-            return Dovetailing.dtVec(llbi);
-        }
-    };
+
     
     public static Database Union(Collection<Database> d) {
         Map<String,List<Table>> collapse = new HashMap<>();
         for (Database x:d) {
-            for (String k:x.keySet())
+            for (String k:x.getTableNames())
                 if (!collapse.containsKey(k)) {
                     List<Table> ltb = new LinkedList<>();
-                    ltb.add(x.get(k));
+                    ltb.add(x.getTable(k));
                     collapse.put(k, ltb);
                 } else
-                    collapse.get(k).add(x.get(k));
+                    collapse.get(k).add(x.getTable(k));
         }
         //ALERT
         Database db = new Database();
@@ -78,20 +72,20 @@ public class DatabaseOperations {
             System.out.println(x);
             Table res = TableOperations.union(collapse.get(x));
             res.forceName(x);
-            db.put(x,res);
+            db.update(x,res);
         }
         return db;
     }
     
-    public static Database Project(Database db, Class... cls) {
+    public static Database Project(Database db, Type... cls) {
         Database toret = new Database();
-        Set<String> ks = db.keySet();
+        Set<String> ks = db.getTableNames();
         for (String x : ks) {
-            List<Class> aList = new LinkedList<>(Arrays.asList(db.get(x).getSchema()));
-            List<Class> bList =  new LinkedList<>(Arrays.asList(cls)); 
+            List<Type> aList = new LinkedList<>(Arrays.asList(db.getTable(x).getSchema()));
+            List<Type> bList =  new LinkedList<>(Arrays.asList(cls)); 
             aList.retainAll(bList);
             if (!aList.isEmpty()) {
-                toret.add(TableOperations.project(db.get(x), cls));
+                toret.add(TableOperations.project(db.getTable(x), cls));
             }
         }
         return toret;
@@ -99,60 +93,72 @@ public class DatabaseOperations {
     
     public static <T> Database Select(Database db, IProperty prop) {
         Database toret = new Database();
-        Set<String> ks = db.keySet();
+        Set<String> ks = db.getTableNames();
         for (String x : ks) {
-            toret.put(x, TableOperations.select(db.get(x), prop));
+            toret.update(x, TableOperations.select(db.getTable(x), prop));
         }
         return toret;
     }
     
-    public static <T> Database Calc(Database db, Class<T> clazz, ICalc<T> op) {
+    public static  Database Calc(Database db, Type clazz, ICalc op) {
         Database toret = new Database();
-        Set<String> ks = db.keySet();
+        Set<String> ks = db.getTableNames();
         for (String x : ks) {
-            List<Class> aList =  Arrays.asList(db.get(x).getSchema());
+            List<Type> aList =  Arrays.asList(db.getTable(x).getSchema());
             if (!aList.contains(clazz)) {
-                toret.put(x, TableOperations.calc(db.get(x),clazz,op));
+                Table tab = TableOperations.calc(db.getTable(x),clazz,op);
+                toret.update(tab.getName(), tab);
             } else
-                toret.put(x, reindexing(db.get(x), dtvecPhi));
+                toret.update(x, TableOperations.reindexing(db.getTable(x), TableOperations.dtvecPhi));
         }
         return toret;
     }
     
-    public static <T> Database ProjectAndGroupBy(Database db, Class<T> clazz, IMapFunction<T> iMapFunction, Class... braket) {
+    public static <T> Database ProjectAndGroupBy(Database db, Type clazz, IMapFunction iMapFunction, Type... braket) {
         Database toret = new Database();
-        Set<String> ks = db.keySet();
+        Set<String> ks = db.getTableNames();
         for (String x : ks) {
-            List<Class> aList =  Arrays.asList(db.get(x).getSchema());
-            List<Class> bList =  Arrays.asList(braket);
+            List<Type> aList =  new LinkedList<>(Arrays.asList(db.getTable(x).getSchema()));
+            List<Type> bList =  new LinkedList<>(Arrays.asList(braket));
             aList.retainAll(bList);
             if (aList.size()==braket.length) {
-                toret.put(x, TableOperations.projectAndGroupBy(db.get(x),clazz,iMapFunction,braket));
+                Table tab = TableOperations.projectAndGroupBy(db.getTable(x),clazz,iMapFunction,braket);
+                toret.update(tab.getName(), tab);
             } else
-                toret.put(x, reindexing(db.get(x), dtvecPhi));
+                toret.update(x, TableOperations.reindexing(db.getTable(x), TableOperations.dtvecPhi));
         }
         return toret;
     }
     
-    public static Database Join(Database left,IJoinProperty prop, Database right) {
+    public static Database Join(Database left,AbstractJoinProperty prop, Database right) {
         Database toret = new Database();
-        for (String x: left.keySet()) {
-            for (String y:right.keySet()) {
-                Table result = TableOperations.join(left.get(x), prop, right.get(y));
-                toret.put(result.getName(),result);
+        for (String x: left.getTableNames()) {
+            for (String y:right.getTableNames()) {
+                Table result = TableOperations.join(left.getTable(x), prop, right.getTable(y));
+                toret.update(result.getName(),result);
             }
         }
         return toret;
         
     }
     
-    public static <T extends ITensorLayer> Database LeftTiedJoin(Database left,IJoinProperty prop, Database right, Tensor<T> tleft, Tensor<T> tright) {
+    public static <T extends ITensorLayer> Database LeftTiedJoin(Database left,AbstractJoinProperty prop, Database right, Tensor<T> tleft, Tensor<T> tright) {
         Database toret = new Database();
-        for (String x: left.keySet()) {
-            for (String y:right.keySet()) {
-                Table result = TableOperations.leftTiedJoin(left.get(x), prop, right.get(y),tleft,tright);
-                toret.put(result.getName(),result);
+        for (String x: left.getTableNames()) {
+            for (String y:right.getTableNames()) {
+                Table result = TableOperations.leftTiedJoin(left.getTable(x), prop, right.getTable(y),tleft,tright);
+                toret.update(result.getName(),result);
             }
+        }
+        return toret;
+    }
+    
+    public static Database Rename(Database db, Type source, Type dest) {
+        Database toret = new Database();
+        for (String x : db.getTableNames()) {
+             Table result = TableOperations.rename(db.getTable(x), source, dest);
+             result.forceName(x);
+             toret.update(x, result);
         }
         return toret;
     }
