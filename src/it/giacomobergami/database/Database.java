@@ -44,6 +44,15 @@ public class Database  {
         db = new HashMap<>();
     }
     
+    public Tuple getTuple(BigInteger key) {
+        for (String layername : db.keySet()) {
+            Tuple got = db.get(layername).get(key);
+            if (got != null)
+                return got;
+        }
+        return null;
+    }
+    
     public Set<String> getTableNames() {
         return db.keySet();
     }

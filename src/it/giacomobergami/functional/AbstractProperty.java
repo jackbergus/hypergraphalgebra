@@ -20,12 +20,24 @@
 
 package it.giacomobergami.functional;
 
+import it.giacomobergami.tensor.ITensorLayer;
+import it.giacomobergami.tensor.Tensor;
+
 /**
  *
  * @author gyankos
  */
-public interface IProperty {
+public abstract class AbstractProperty<T  extends ITensorLayer> {
     
-   public boolean prop(Tuple tup);
+   private Tensor<T> ten;
+   public AbstractProperty(Tensor<T> t) {
+       this.ten = t;
+   }
+   
+   public abstract boolean prop(Tuple tup,Tensor<T> ten);
+    
+   public boolean prop(Tuple tup) {
+       return prop(tup,this.ten);
+   }
     
 }

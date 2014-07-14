@@ -44,6 +44,10 @@ public class Tensor<T extends ITensorLayer> extends HashMap<String,T>  {
         return clazck;
     }
     
+    public Tensor<T> createNewTensor() {
+        return new Tensor<>(clazck);
+    }
+    
     public void set(BigInteger i, BigInteger j, String layer, double value) {
           if (!containsKey(layer))
                 createNewLayer(layer);

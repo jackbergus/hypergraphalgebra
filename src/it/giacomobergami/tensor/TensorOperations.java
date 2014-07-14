@@ -20,6 +20,7 @@
 
 package it.giacomobergami.tensor;
 
+import com.google.common.collect.Table;
 import it.giacomobergami.database.Database;
 import it.giacomobergami.utils.Dovetailing;
 import java.math.BigInteger;
@@ -59,6 +60,19 @@ public class TensorOperations {
         }
         return toret;
     }
+    
+    /*public static <T extends ITensorLayer> Tensor<T> TEdgeSelect(Database ndb, Tensor<T> tensor, IHedgeProp prop) {
+        Tensor<T> toret = tensor.createNewTensor();
+        for (String layername : tensor.keySet()) {
+            T layer = tensor.get(layername);
+            for (Table.Cell<BigInteger, BigInteger, Double> cell:layer.getValueRange()) {
+                if (prop.prop( new HyperEdge(ndb.getTuple(cell.getRowKey()), ndb.getTuple(cell.getColumnKey()), layername, cell.getValue()))) {
+                    toret.set(cell.getRowKey(), cell.getColumnKey(), layername, cell.getValue());
+                }
+            }
+        }
+        return toret;
+    }*/
     
     public static <T extends ITensorLayer> Tensor<T> TJoin(Database ndb, Collection<String> commonLayers, Tensor<T> tLeft, Tensor<T> tRight) {
          Tensor<T> nt = new Tensor<>(tLeft.getLayersClass());

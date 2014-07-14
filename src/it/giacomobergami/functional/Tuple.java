@@ -154,4 +154,17 @@ public class Tuple {
         return toret +"> w="+w+" ~ idx="+index.toString();
     }
     
+
+    public String toString2() {
+        String toret = "<";
+        for (Object x: elems) {
+            if (!isPojo)
+                toret += x.toString()+",";
+            else
+                toret += PojoGenerator.getPojoValue(x).toString() +",";
+        }
+        toret = toret.substring(0, toret.length()-1);
+        return toret +">";
+    }
+    
 }

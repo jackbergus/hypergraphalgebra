@@ -39,6 +39,9 @@ import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 import it.giacomobergami.utils.NonCompPair;
 import java.math.BigInteger;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  *
@@ -64,6 +67,8 @@ public class GuavaBinaryTensorLayer implements ITensorLayer, Serializable {
             p.put(db.getRowKey(), db.getColumnKey(), db.getValue());//set
         }
     }
+    
+    
     
     @Override
     public BigInteger nCols() {
@@ -204,6 +209,30 @@ public class GuavaBinaryTensorLayer implements ITensorLayer, Serializable {
     @Override
     public ITensorLayer newInstance() {
         return new GuavaBinaryTensorLayer();
+    }
+    
+    @Override
+    public String toString() {
+        String toret = "";
+        for (BigInteger row : p.rowKeySet()) {
+            for (BigInteger col : p.row(row).keySet()) {
+                toret += "M["+row+","+col+"]="+p.get(row, col)+"\n";
+            }
+        }
+        return toret;
+    }
+
+    @Override
+    public int nEntities() {
+        return Entities().size();
+    }
+
+    @Override
+    public HashSet<BigInteger> Entities() {
+        HashSet<BigInteger> ls = new HashSet<>();
+        ls.addAll(p.columnKeySet());
+        ls.addAll(p.rowKeySet());
+        return ls;
     }
     
 }

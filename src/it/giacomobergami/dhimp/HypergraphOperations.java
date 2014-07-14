@@ -22,13 +22,14 @@ package it.giacomobergami.dhimp;
 import com.google.common.collect.Table;
 import it.giacomobergami.database.Database;
 import it.giacomobergami.database.DatabaseOperations;
-import it.giacomobergami.functional.IProperty;
+import it.giacomobergami.functional.AbstractProperty;
 import it.giacomobergami.functional.Tuple;
 import it.giacomobergami.utils.Dovetailing;
 import it.giacomobergami.relational.ICalc;
 import it.giacomobergami.relational.AbstractJoinProperty;
 import it.giacomobergami.relational.IMapFunction;
 import it.giacomobergami.relational.TableOperations;
+import static it.giacomobergami.relational.TableOperations.project;
 import it.giacomobergami.tensor.HyperEdge;
 import it.giacomobergami.tensor.IHedgeProp;
 import it.giacomobergami.tensor.ITensorLayer;
@@ -36,9 +37,11 @@ import it.giacomobergami.tensor.Tensor;
 import it.giacomobergami.tensor.TensorOperations;
 import it.giacomobergami.types.Type;
 import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -49,7 +52,7 @@ import java.util.Set;
  */
 public class HypergraphOperations<T extends ITensorLayer> {
 
-    public DHImp<T> HSelect(DHImp<T> rdb, IProperty dbProp, IHedgeProp tProp) {
+    public DHImp<T> HSelect(DHImp<T> rdb, AbstractProperty dbProp, IHedgeProp tProp) {
         Database oldb = rdb.getDB();
         Database ndb = DatabaseOperations.Select(oldb, dbProp);
         Tensor<T> tensor = rdb.getT();
@@ -59,9 +62,19 @@ public class HypergraphOperations<T extends ITensorLayer> {
                 Tuple left = oldb.getEntityByIndex(cell.getRowKey());
                 Tuple right = oldb.getEntityByIndex(cell.getColumnKey());
                 HyperEdge he = new HyperEdge(right, left, x, cell.getValue());
-                if (dbProp.prop(left) && dbProp.prop(right) && tProp.prop(he)) {
-                    nt.set(cell.getRowKey(), cell.getColumnKey(), x, cell.getValue());
+                if (dbProp==null) {
+                    if (tProp==null)
+                        nt.set(cell.getRowKey(), cell.getColumnKey(), x, cell.getValue());
+                    else if (tProp.prop(he))
+                        nt.set(cell.getRowKey(), cell.getColumnKey(), x, cell.getValue());
+                } else {
+                    if (tProp==null)
+                        nt.set(cell.getRowKey(), cell.getColumnKey(), x, cell.getValue());
+                    else if (tProp.prop(he)) {
+                        nt.set(cell.getRowKey(), cell.getColumnKey(), x, cell.getValue());
+                    }
                 }
+                
             }
         }
         return new DHImp<>(ndb, nt);
@@ -147,9 +160,16 @@ public class HypergraphOperations<T extends ITensorLayer> {
     }
     
     public DHImp<T> HGroupBy(DHImp<T> rdb, Type clazz, IMapFunction iMapFunction, Type... braket) {
-        Database ndb = DatabaseOperations.ProjectAndGroupBy(rdb.getDB(), clazz, iMapFunction, braket);
+        /*Database ndb = DatabaseOperations.ProjectAndGroupBy(rdb.getDB(), clazz, iMapFunction, braket);
         Tensor<T> nt = TensorOperations.TUpdate(ndb, rdb.getT());
-        return new DHImp<>(ndb,nt);
+        return new DHImp<>(ndb,nt);*/
+        //groupBy(project(one,array), aClass, iMapFunction)
+        LinkedList<Type> llt = new LinkedList<>(Arrays.asList( braket));
+        llt.add(clazz);
+        DHImp<T> projected = HProject(rdb, llt.toArray(new Type[0]));
+        Database ndb = DatabaseOperations.GroupBy(projected.getDB(), clazz, iMapFunction, braket);
+        Tensor<T> nt = TensorOperations.TUpdate(ndb, projected.getT());
+        return new DHImp<>(ndb,nt); 
     }
     
     public DHImp<T> HRename(DHImp<T> db, Type source, Type dest) {

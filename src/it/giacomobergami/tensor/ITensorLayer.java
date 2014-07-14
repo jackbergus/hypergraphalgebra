@@ -27,6 +27,8 @@ import java.util.Set;
 import com.google.common.collect.Table;
 import it.giacomobergami.utils.NonCompPair;
 import java.math.BigInteger;
+import java.util.HashSet;
+import java.util.List;
 /**
  *
  * @author gyankos
@@ -38,6 +40,9 @@ public interface ITensorLayer {
    public BigInteger nCols();
    public BigInteger nRows();
     
+   public int nEntities();
+   public HashSet<BigInteger> Entities();
+   
    public double get(BigInteger i, BigInteger j);
    /**
     * Returns the cell's value

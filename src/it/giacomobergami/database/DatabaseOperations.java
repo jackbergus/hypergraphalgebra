@@ -20,7 +20,7 @@
 
 package it.giacomobergami.database;
 
-import it.giacomobergami.functional.IProperty;
+import it.giacomobergami.functional.AbstractProperty;
 import it.giacomobergami.utils.Dovetailing;
 import it.giacomobergami.relational.ICalc;
 import it.giacomobergami.relational.AbstractJoinProperty;
@@ -91,7 +91,7 @@ public class DatabaseOperations {
         return toret;
     }
     
-    public static <T> Database Select(Database db, IProperty prop) {
+    public static <T> Database Select(Database db, AbstractProperty prop) {
         Database toret = new Database();
         Set<String> ks = db.getTableNames();
         for (String x : ks) {
@@ -123,6 +123,22 @@ public class DatabaseOperations {
             aList.retainAll(bList);
             if (aList.size()==braket.length) {
                 Table tab = TableOperations.projectAndGroupBy(db.getTable(x),clazz,iMapFunction,braket);
+                toret.update(tab.getName(), tab);
+            } else
+                toret.update(x, TableOperations.reindexing(db.getTable(x), TableOperations.dtvecPhi));
+        }
+        return toret;
+    }
+    
+    public static <T> Database GroupBy(Database db, Type clazz, IMapFunction iMapFunction, Type... braket) {
+        Database toret = new Database();
+        Set<String> ks = db.getTableNames();
+        for (String x : ks) {
+            List<Type> aList =  new LinkedList<>(Arrays.asList(db.getTable(x).getSchema()));
+            List<Type> bList =  new LinkedList<>(Arrays.asList(braket));
+            aList.retainAll(bList);
+            if (aList.size()==braket.length) {
+                Table tab = TableOperations.groupBy(db.getTable(x),clazz,iMapFunction);
                 toret.update(tab.getName(), tab);
             } else
                 toret.update(x, TableOperations.reindexing(db.getTable(x), TableOperations.dtvecPhi));

@@ -22,7 +22,7 @@ package it.giacomobergami.relational;
 
 import it.giacomobergami.utils.Dovetailing;
 import it.giacomobergami.database.IPhi;
-import it.giacomobergami.functional.IProperty;
+import it.giacomobergami.functional.AbstractProperty;
 import it.giacomobergami.functional.Tuple;
 import it.giacomobergami.tensor.ITensorLayer;
 import it.giacomobergami.tensor.Tensor;
@@ -129,12 +129,14 @@ public class TableOperations {
         return toret;
     }
     
-    public static Table select(Table t, IProperty prop){
+    public static Table select(Table t, AbstractProperty prop){
         Table toret = new Table(t.getName(),t.getSchema());
         Iterator<Tuple> li = t.iterator();
         while (li.hasNext()) {
             Tuple current = li.next();
-            if (prop.prop(current))
+            if (prop == null)
+                toret.add(current);
+            else if (prop.prop(current))
                 toret.add(current);
         }
         return toret;
@@ -231,7 +233,7 @@ public class TableOperations {
         return toret;
     }
     
-    private static Table groupBy(Table t, Type clazz, IMapFunction map) {
+    public static Table groupBy(Table t, Type clazz, IMapFunction map) {
         Type[] oldschema = t.getSchema();
         Table toret = new Table(t.getName()+" Group by "+clazz.getName(), oldschema);
         LinkedList<Type> llc = new LinkedList<>();
